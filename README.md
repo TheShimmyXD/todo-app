@@ -31,9 +31,9 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 
 | Ruta | Contenido |
 |---|---|
-| `backend/` | API y dueño del esquema. Por ahora: `prisma/schema.prisma`, `prisma/migrations/` y `prisma.config.ts`. |
+| `backend/` | API REST con Express (`src/`) y dueño del esquema (`prisma/schema.prisma`, `prisma/migrations/`, `prisma.config.ts`). |
 | `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
-| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. |
+| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. |
 | `docker-compose.yml` | Servicios de Docker. Por ahora, solo `db` (PostgreSQL con volumen persistente y healthcheck). |
 | `.env.example` | Plantilla de todas las variables de entorno (ver más abajo). |
 | `.editorconfig` | Codificación, finales de línea e indentación comunes para cualquier editor. |
@@ -49,6 +49,7 @@ Copia la plantilla y ajusta los valores: `cp .env.example .env`. El archivo `.en
 | `POSTGRES_PORT` | Docker Compose | Puerto de la máquina donde se publica PostgreSQL. |
 | `DATABASE_URL` | Prisma y el pool de Express | Cadena de conexión a la base. |
 | `API_PORT` | Express | Puerto en el que escucha la API. |
+| `DB_POOL_MAX`, `DB_POOL_IDLE_TIMEOUT_MS`, `DB_POOL_CONNECTION_TIMEOUT_MS` | Pool de Express | Tamaño y tiempos de espera del pool (opcionales; valores por defecto en [`docs/api.md`](docs/api.md#pool-de-conexiones)). |
 | `BACKEND_URL` | Route Handlers de Next.js | URL base de la API a la que se reenvían las escrituras. Solo existe en el servidor. |
 
 ## Instalación
@@ -72,6 +73,17 @@ docker compose down -v          # borra el contenedor y el volumen: la base qued
 - El healthcheck usa `pg_isready` contra la base de la aplicación; los servicios que dependan de la base esperan a que esté `healthy`.
 - Si falta una variable obligatoria en `.env`, `docker compose` se detiene con un mensaje como `required variable POSTGRES_DB is missing a value`.
 - Si el puerto 5432 ya está ocupado en tu máquina, cambia `POSTGRES_PORT` en `.env` (y el puerto de `DATABASE_URL`).
+
+### API (Express)
+
+```bash
+cd backend
+npm ci && npm run db:deploy     # solo la primera vez
+npm run dev                     # http://localhost:4000, recarga al guardar
+curl localhost:4000/health      # {"status":"ok"}
+```
+
+Endpoints, reglas de validación, formato de errores y cómo agregar un endpoint: [`docs/api.md`](docs/api.md).
 
 ## Decisiones técnicas tomadas
 
