@@ -2,8 +2,6 @@
 
 Aplicación de tareas para un equipo: crear, listar, filtrar (todas, completadas y pendientes), editar, marcar como completada y eliminar tareas. El backend es una API REST en Express y TypeScript sobre PostgreSQL; el frontend es una aplicación Next.js con Prisma; todo se levanta con Docker Compose.
 
-> Estado: en construcción. Las secciones marcadas como *pendiente* se completan a medida que se agrega cada parte.
-
 ## Tecnologías utilizadas
 
 | Capa | Tecnología | Versión |
@@ -25,7 +23,22 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 
 ## Arquitectura
 
-*Pendiente.* Resumen del diseño: Prisma es el dueño del esquema y de las migraciones; Express es el único que escribe en la base y valida los datos; Next.js lee con Prisma desde sus Server Components y envía las escrituras a Express a través de sus Route Handlers.
+```mermaid
+flowchart LR
+    U[Navegador] -->|páginas| N[Next.js :3000]
+    U -->|"POST, PUT, DELETE /api/tasks"| N
+    N -->|"lecturas (Server Components + Prisma Client)"| DB[(PostgreSQL)]
+    N -->|"Route Handlers reenvían las escrituras"| E[Express :4000]
+    E -->|"SQL parametrizado (pg Pool)"| DB
+    M["migrate (prisma migrate deploy)"] -->|esquema| DB
+```
+
+- **Prisma es el dueño del esquema.** La tabla se define una sola vez, en `backend/prisma/schema.prisma`, y solo cambia con una migración de Prisma.
+- **Express es el único que escribe.** Valida cada petición y escribe con SQL parametrizado sobre un pool de `pg`.
+- **Next.js lee con Prisma y escribe a través de Express.** Las páginas son Server Components que consultan con el cliente de Prisma (generado desde el mismo schema). Los formularios y botones son Client Components que llaman a los Route Handlers de Next (`/api/tasks`), y estos reenvían la petición a Express sin cambiar su respuesta.
+- Al terminar una escritura, la interfaz pide a Next que vuelva a renderizar la página (`router.refresh()`), y la lista se lee otra vez de la base.
+
+Detalle por capa: [`docs/database.md`](docs/database.md), [`docs/api.md`](docs/api.md), [`docs/frontend.md`](docs/frontend.md) y [`docs/docker.md`](docs/docker.md).
 
 ## Estructura del repositorio
 
@@ -61,7 +74,27 @@ Para levantar todo con Docker no hace falta `.env`: `docker-compose.yml` trae un
 
 ## Instalación
 
-*Pendiente.*
+Requisitos:
+
+- Para levantar todo: Git, Docker y Docker Compose v2 (`docker compose version`).
+- Para desarrollar fuera de Docker: además, Node.js 24 LTS. Con [nvm](https://github.com/nvm-sh/nvm): `nvm install 24 && nvm use 24`.
+
+```bash
+git clone <url-del-repositorio> todo-app
+cd todo-app
+docker compose up --build -d    # listo en http://localhost:3000
+```
+
+Para desarrollar con recarga en caliente, en cambio:
+
+```bash
+cp .env.example .env            # variables para correr fuera de Docker
+docker compose up -d db         # solo PostgreSQL
+cd backend && npm ci && npm run db:deploy && cd ..   # dependencias y tabla
+cd frontend && npm ci && cd ..
+```
+
+Después, `npm run dev` en `backend/` y en `frontend/` (ver la sección siguiente). Cada paquete tiene sus propias dependencias (`npm ci` en cada carpeta); no hay workspaces.
 
 ## Comandos para correr el proyecto
 
@@ -116,11 +149,53 @@ Estructura, qué es Server y qué es Client, y cómo agregar un filtro: [`docs/f
 
 ## Decisiones técnicas tomadas
 
-*Pendiente.*
+### Quién toca la base de datos
+
+El enunciado pide a la vez un backend Express sobre PostgreSQL, Prisma configurado en el proyecto Next.js y API Routes de Next que se conecten con Express. Tomado al pie de la letra, eso abre dos caminos hacia la base: si Next escribiera con Prisma y Express con SQL, habría dos lugares que validan los datos, y si cada uno tuviera su schema, dos fuentes de verdad que se desincronizan con la primera migración.
+
+Se resolvió con **un solo schema y un solo camino de escritura**:
+
+- El schema y las migraciones viven en `backend/prisma/` (por eso el commit «Backend setup con Express y Prisma»).
+- Next.js usa Prisma solo para **leer**: genera su cliente desde ese mismo schema y lo usa en los Server Components.
+- Toda **escritura** pasa por Express: los Route Handlers de Next la reenvían y devuelven la respuesta de Express tal cual, así que las reglas de validación y los códigos de error existen en un solo lugar.
+
+La consecuencia práctica: agregar un campo es un recorrido fijo (schema → migración → SQL de Express → validación → interfaz) y nunca hay que sincronizar dos modelos.
+
+### API
+
+- **Validación con Zod** (`backend/src/validation/`): esquemas estrictos, así que un campo desconocido es un 400 con su nombre en vez de ignorarse en silencio. El título se recorta, no puede quedar vacío y tiene el mismo límite que su columna (200 caracteres); la descripción admite hasta 2000.
+- **Un formato de error único**: `{ "error": { "code", "message", "details"? } }`, producido por un solo middleware. La interfaz decide con `code`, que es estable, y nunca recibe un stack.
+- **`PUT` parcial**: el enunciado nombra `PUT /api/tasks/:id`, y la interfaz necesita marcar una tarea como completada sin reenviar título y descripción. Por eso `PUT` acepta cualquier combinación de campos (al menos uno) y no cambia los que no recibe, con un único `UPDATE` parametrizado. En REST estricto eso sería `PATCH`; se mantuvo el método del enunciado.
+- **SQL a mano y fijo**: cada operación es una sentencia parametrizada (nada de SQL armado con texto), fácil de revisar y de comparar con `db/queries.sql`.
+- **Pool de conexiones** configurable (`DB_POOL_*`): máximo de 10 conexiones, para dejar margen a Prisma en el límite de 100 de PostgreSQL, y tiempo de espera de 5 s para que una base caída produzca un error en vez de una petición colgada.
+- **Falla temprano**: el entorno se valida al arrancar, y la API se apaga limpia al recibir SIGTERM (termina las peticiones en curso y cierra el pool).
+
+### Interfaz
+
+- **Server Components para leer, Client Components para interactuar**: la lista y los contadores se renderizan en el servidor; el formulario, los botones y los mensajes de error son los únicos componentes que corren en el navegador.
+- **El filtro vive en la URL** (`?completed=true`), igual que en la API: se puede compartir, recargar y volver atrás.
+- Si Express no responde, los Route Handlers contestan `502 BACKEND_UNAVAILABLE` o `504 BACKEND_TIMEOUT` con el mismo formato de error, y la interfaz lo muestra como cualquier otro.
+
+### Entorno y Docker
+
+- **Versiones exactas**, sin `^`, para que todo el equipo instale lo mismo (tabla de tecnologías).
+- **Un solo `.env`** en la raíz para los dos paquetes; Docker no lo necesita, porque `docker-compose.yml` trae valores por defecto.
+- **Imágenes en varias etapas** sobre `node:24-slim` (Debian), con un servicio `migrate` que aplica las migraciones antes de que arranque la API ([`docs/docker.md`](docs/docker.md)).
 
 ## Base de datos
 
-Una sola tabla, `tasks`, definida en `backend/prisma/schema.prisma` y creada por la migración inicial de Prisma. Tiene un índice compuesto sobre `(completed, created_at DESC)`: sirve al filtro por estado y entrega las tareas ya ordenadas de la más reciente a la más antigua.
+Una sola tabla, `tasks`, definida en `backend/prisma/schema.prisma` y creada por la migración inicial de Prisma (`backend/prisma/migrations/20261023192118_init/migration.sql`): `id` UUID como llave primaria, `title`, `description`, `completed` y `created_at`.
+
+### Por qué el índice sobre `completed`
+
+La consulta que más se repite es «tareas de un estado, de la más reciente a la más antigua» (`WHERE completed = $1 ORDER BY created_at DESC`), que usan el filtro de la API y las pestañas de la interfaz. Por eso el índice es **compuesto: `(completed, created_at DESC)`**.
+
+- Un índice solo sobre `completed` aporta poco: una columna booleana tiene dos valores, así que cada uno abarca una gran parte de la tabla y PostgreSQL suele preferir leerla entera.
+- Con `created_at DESC` como segunda columna, el índice además entrega las filas de cada estado ya ordenadas, y la base se ahorra el ordenamiento.
+- Medido con `EXPLAIN ANALYZE` sobre 20 000 tareas (80 % completadas): las pendientes pasan de un recorrido completo de la tabla (3,8 ms) a un recorrido del índice (2,0 ms), y las completadas se leen del índice sin paso de ordenamiento. Con este volumen la diferencia es de milisegundos; lo que importa es la forma del plan, que se mantiene cuando la tabla crece.
+- La vista «todas» (sin filtro) no aprovecha este índice; si llegara a ser lenta, la solución sería un índice aparte sobre `created_at DESC` o paginar.
+
+Las dos consultas escritas a mano que pide el enunciado (tareas por estado y conteo agrupado por estado) están en `db/queries.sql`.
 
 Para crear la tabla en una base vacía:
 
@@ -133,4 +208,70 @@ El detalle de columnas, la justificación del índice con `EXPLAIN ANALYZE` y c�
 
 ## Despliegue en Ubuntu desde cero
 
-*Pendiente.*
+Dos caminos para un servidor Ubuntu 24.04 recién instalado. Los comandos se comprobaron en un contenedor `ubuntu:24.04` limpio, salvo los marcados como *no comprobado*.
+
+### Opción A: con Docker (un solo comando)
+
+```bash
+sudo apt update && sudo apt install -y docker.io docker-compose-v2 git
+sudo usermod -aG docker "$USER"      # cierra la sesión y vuelve a entrar
+git clone <url-del-repositorio> todo-app && cd todo-app
+docker compose up --build -d          # web en el puerto 3000, API en el 4000
+```
+
+*No comprobado en el contenedor* (Docker dentro de Docker); es el mismo `docker compose up` que se probó en desarrollo desde un clon limpio.
+
+### Opción B: Node y PostgreSQL instalados en el servidor
+
+```bash
+# 1. Paquetes base
+sudo apt update && sudo apt install -y curl git ca-certificates
+
+# 2. Node.js 24 LTS (repositorio de NodeSource)
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v                               # v24.x
+
+# 3. PostgreSQL 18 (repositorio oficial de PostgreSQL)
+sudo apt install -y postgresql-common
+sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+sudo apt install -y postgresql-18
+sudo -u postgres psql -c "CREATE USER todo WITH PASSWORD 'cambia-esta-clave';"
+sudo -u postgres psql -c "CREATE DATABASE todo OWNER todo;"
+
+# 4. Código y variables de entorno
+git clone <url-del-repositorio> todo-app && cd todo-app
+cp .env.example .env
+# En .env, ajusta como mínimo:
+#   DATABASE_URL=postgresql://todo:cambia-esta-clave@localhost:5432/todo
+#   BACKEND_URL=http://localhost:4000
+
+# 5. Tabla, compilación y arranque
+cd backend && npm ci && npm run db:deploy && npm run build && cd ..
+cd frontend && npm ci && npm run build && cd ..
+(cd backend && npm start) &           # API en el puerto 4000
+(cd frontend && npm start) &          # web en el puerto 3000
+curl localhost:4000/health            # {"status":"ok"}
+```
+
+`npm ci` instala también las dependencias de desarrollo, que hacen falta para compilar (TypeScript, la CLI de Prisma).
+
+Para que los dos procesos sigan corriendo al cerrar la sesión y arranquen con el servidor, un servicio de systemd por proceso (*no comprobado*: el contenedor de prueba no tiene systemd). Ejemplo para la API, con el repositorio en `/opt/todo-app` y el usuario `todo`:
+
+```ini
+# /etc/systemd/system/todo-api.service
+[Unit]
+Description=To-Do App API
+After=network.target postgresql.service
+
+[Service]
+User=todo
+WorkingDirectory=/opt/todo-app/backend
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+El de la web es igual, con `WorkingDirectory=/opt/todo-app/frontend`, `Description=To-Do App web` y `After=todo-api.service`. Después: `sudo systemctl daemon-reload && sudo systemctl enable --now todo-api todo-web`. Los dos procesos leen el `.env` de la raíz del repositorio, así que no hace falta repetir las variables en el servicio.
