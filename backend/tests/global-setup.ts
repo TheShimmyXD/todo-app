@@ -3,6 +3,7 @@
 // default `postgres` database) and then applies the Prisma migrations to it, exactly as
 // `npm run db:deploy` does for the development database.
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import pg from "pg";
 
 export async function setup() {
@@ -27,7 +28,10 @@ export async function setup() {
     await client.end();
   }
 
-  execFileSync("npx", ["prisma", "migrate", "deploy"], {
+  // The Prisma CLI runs with this same Node binary instead of through `npx`: on Windows
+  // `npx` is a .cmd script, which Node refuses to start without a shell.
+  const prismaCli = createRequire(import.meta.url).resolve("prisma/build/index.js");
+  execFileSync(process.execPath, [prismaCli, "migrate", "deploy"], {
     env: { ...process.env, DATABASE_URL: testUrl.toString() },
     stdio: "pipe",
   });

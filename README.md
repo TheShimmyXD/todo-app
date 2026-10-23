@@ -48,12 +48,13 @@ Vista de conjunto, flujos de lectura y escritura y dónde vive cada responsabili
 | `frontend/` | Interfaz web con Next.js: páginas (`app/`), componentes (`components/`), lectura con Prisma (`lib/`). El cliente de Prisma se genera en `generated/` desde el schema del backend. |
 | `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
 | `CONTRIBUTING.md` | Cómo trabajar en equipo: entorno, ramas, commits, qué correr antes de un PR y qué revisar en uno. |
-| `docs/` | Documentación para el equipo. `architecture.md`: componentes, flujos y dónde vive cada responsabilidad. `adding-a-field.md`: cómo agregar un campo de punta a punta. `adr/`: decisiones de arquitectura. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. `docker.md`: imágenes, orden de arranque, variables y problemas comunes. |
+| `docs/` | Documentación para el equipo. `architecture.md`: componentes, flujos y dónde vive cada responsabilidad. `adding-a-field.md`: cómo agregar un campo de punta a punta. `adr/`: decisiones de arquitectura. `windows.md`: instalación y desarrollo en Windows 11 con PowerShell. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. `docker.md`: imágenes, orden de arranque, variables y problemas comunes. |
 | `docker-compose.yml` | Toda la aplicación: `db` (PostgreSQL con volumen y healthcheck), `migrate` (aplica las migraciones), `backend` y `frontend`. |
 | `backend/Dockerfile`, `frontend/Dockerfile` | Imágenes de la API y de la web, en varias etapas (ver [`docs/docker.md`](docs/docker.md)). |
 | `.dockerignore`, `backend/.dockerignore` | Lo que queda fuera de cada contexto de build (dependencias, compilados, `.env`). |
 | `.env.example` | Plantilla de todas las variables de entorno (ver más abajo). |
 | `.editorconfig` | Codificación, finales de línea e indentación comunes para cualquier editor. |
+| `.gitattributes` | Finales de línea LF en el repositorio y en cada checkout, también en Windows. |
 | `.gitignore` | Dependencias, salidas de compilación y archivos `.env` locales que nunca se versionan. |
 
 ## Variables de entorno
@@ -79,6 +80,7 @@ Requisitos:
 
 - Para levantar todo: Git, Docker y Docker Compose v2 (`docker compose version`).
 - Para desarrollar fuera de Docker: además, Node.js 24 LTS. Con [nvm](https://github.com/nvm-sh/nvm): `nvm install 24 && nvm use 24`.
+- En Windows 11: Docker Desktop y PowerShell; las órdenes equivalentes están en [`docs/windows.md`](docs/windows.md).
 
 ```bash
 git clone <url-del-repositorio> todo-app
@@ -276,3 +278,15 @@ WantedBy=multi-user.target
 ```
 
 El de la web es igual, con `WorkingDirectory=/opt/todo-app/frontend`, `Description=To-Do App web` y `After=todo-api.service`. Después: `sudo systemctl daemon-reload && sudo systemctl enable --now todo-api todo-web`. Los dos procesos leen el `.env` de la raíz del repositorio, así que no hace falta repetir las variables en el servicio.
+
+## Windows 11
+
+Con Docker Desktop, el mismo comando de siempre levanta todo desde PowerShell:
+
+```powershell
+git clone <url-del-repositorio> todo-app
+cd todo-app
+docker compose up --build -d    # web en http://localhost:3000
+```
+
+Para desarrollar con Node instalado en Windows, las órdenes en PowerShell, la política de ejecución de scripts y los problemas comunes (puertos reservados, máquinas virtuales): [`docs/windows.md`](docs/windows.md). *Pendiente de comprobar en Windows 11.*

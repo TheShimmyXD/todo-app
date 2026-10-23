@@ -4,7 +4,7 @@ Guía para trabajar en el repositorio en equipo: preparar el entorno, ramas, com
 
 ## Entorno
 
-Requisitos: Git, Docker con Compose v2 y Node.js 24 LTS (`nvm install 24 && nvm use 24`).
+Requisitos: Git, Docker con Compose v2 y Node.js 24 LTS (`nvm install 24 && nvm use 24`). En Windows 11, Docker Desktop y PowerShell: las mismas órdenes, adaptadas, están en [`docs/windows.md`](docs/windows.md).
 
 ```bash
 cp .env.example .env            # una vez
@@ -17,7 +17,7 @@ Después, `npm run dev` en `backend/` (http://localhost:4000) y en `frontend/` (
 
 - Cada paquete tiene sus dependencias y su `package-lock.json`; no hay workspaces. Instala siempre con `npm ci`, que respeta el lockfile.
 - Las versiones están fijadas sin `^`. Para agregar o actualizar una dependencia: `npm install --save-exact <paquete>@<versión>` y, en el PR, por qué hace falta.
-- `.editorconfig` fija la codificación, los finales de línea y la indentación (2 espacios); actívalo en tu editor.
+- `.editorconfig` fija la codificación, los finales de línea y la indentación (2 espacios); actívalo en tu editor. `.gitattributes` fuerza LF en cada checkout, también en Windows: no cambies `core.autocrlf` para «arreglarlo».
 
 ## Idioma
 
@@ -68,6 +68,8 @@ docker compose up --build -d
 docker compose ps -a            # db y backend (healthy), frontend Up, migrate Exited (0)
 ```
 
+En Windows, el mismo bloque va en PowerShell con una orden por línea ([`docs/windows.md`](docs/windows.md#pruebas-y-comprobaciones-antes-de-un-pr)).
+
 El frontend no tiene pruebas automáticas: cualquier cambio de interfaz se prueba en el navegador (crear, completar, filtrar y eliminar) y el PR dice qué se probó.
 
 ## Qué revisar en un PR
@@ -99,6 +101,7 @@ Cada cambio deja su documentación en el mismo PR:
 | Un endpoint, una regla o un error | [`docs/api.md`](docs/api.md) |
 | Un componente, una página o un filtro | [`docs/frontend.md`](docs/frontend.md) |
 | Docker, servicios o variables | [`docs/docker.md`](docs/docker.md), `.env.example` y la tabla de variables del README |
+| Una orden de instalación o de desarrollo | El README y su equivalente en PowerShell en [`docs/windows.md`](docs/windows.md) |
 | Una dependencia o su versión | La tabla «Tecnologías utilizadas» del README |
 | Algo que contradice una decisión registrada | Un ADR nuevo (ver abajo) |
 

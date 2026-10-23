@@ -1,0 +1,14 @@
+# Line endings: every file is stored and checked out with LF, on Windows too, so a
+# checkout matches .editorconfig and the files copied into the Linux images are the
+# same on every machine. Git for Windows would otherwise convert them to CRLF.
+* text=auto eol=lf
+
+# Binary files are never converted.
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
