@@ -1,0 +1,22 @@
+// Single source of truth for the database schema. Every change goes through a
+// new migration (`npm run db:migrate -- --name <change>`); never edit the tables by hand.
+// The connection URL lives in `prisma.config.ts`.
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Task {
+  // Defaults live in the database, not in the Prisma client: the API inserts
+  // rows with plain SQL and relies on PostgreSQL to fill `id` and `created_at`.
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String   @db.VarChar(200)
+  description String   @default("")
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Serves the task list: filter by status and return the newest first in a
+  // single index scan. See docs/database.md for the reasoning and EXPLAIN output.
+  @@index([completed, createdAt(sort: Desc)], map: "tasks_completed_created_at_idx")
+  @@map("tasks")
+}

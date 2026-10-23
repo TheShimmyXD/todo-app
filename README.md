@@ -31,6 +31,8 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 
 | Ruta | Contenido |
 |---|---|
+| `backend/` | API y dueño del esquema. Por ahora: `prisma/schema.prisma`, `prisma/migrations/` y `prisma.config.ts`. |
+| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. |
 | `docker-compose.yml` | Servicios de Docker. Por ahora, solo `db` (PostgreSQL con volumen persistente y healthcheck). |
 | `.env.example` | Plantilla de todas las variables de entorno (ver más abajo). |
 | `.editorconfig` | Codificación, finales de línea e indentación comunes para cualquier editor. |
@@ -76,7 +78,16 @@ docker compose down -v          # borra el contenedor y el volumen: la base qued
 
 ## Base de datos
 
-*Pendiente.*
+Una sola tabla, `tasks`, definida en `backend/prisma/schema.prisma` y creada por la migración inicial de Prisma. Tiene un índice compuesto sobre `(completed, created_at DESC)`: sirve al filtro por estado y entrega las tareas ya ordenadas de la más reciente a la más antigua.
+
+Para crear la tabla en una base vacía:
+
+```bash
+docker compose up -d db
+cd backend && npm ci && npm run db:deploy
+```
+
+El detalle de columnas, la justificación del índice con `EXPLAIN ANALYZE` y cómo crear nuevas migraciones están en [`docs/database.md`](docs/database.md).
 
 ## Despliegue en Ubuntu desde cero
 

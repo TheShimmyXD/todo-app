@@ -1,0 +1,28 @@
+{
+  "name": "todo-app-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "REST API for the To-Do App and owner of the database schema and migrations.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "prisma": "7.10.1",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "dotenv": "18.0.9"
+  },
+  "allowScripts": {
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true
+  }
+}
