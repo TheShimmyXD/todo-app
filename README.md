@@ -31,6 +31,7 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 
 | Ruta | Contenido |
 |---|---|
+| `docker-compose.yml` | Servicios de Docker. Por ahora, solo `db` (PostgreSQL con volumen persistente y healthcheck). |
 | `.env.example` | Plantilla de todas las variables de entorno (ver más abajo). |
 | `.editorconfig` | Codificación, finales de línea e indentación comunes para cualquier editor. |
 | `.gitignore` | Dependencias, salidas de compilación y archivos `.env` locales que nunca se versionan. |
@@ -53,7 +54,21 @@ Copia la plantilla y ajusta los valores: `cp .env.example .env`. El archivo `.en
 
 ## Comandos para correr el proyecto
 
-*Pendiente.*
+### Base de datos (PostgreSQL en Docker)
+
+```bash
+cp .env.example .env            # solo la primera vez
+docker compose up -d db         # levanta PostgreSQL 18.6
+docker compose ps               # el servicio db debe decir (healthy)
+docker compose exec db psql -U todo -d todo   # consola SQL (usuario y base de .env)
+docker compose stop db          # detiene el contenedor; los datos se conservan
+docker compose down -v          # borra el contenedor y el volumen: la base queda vacía
+```
+
+- Los datos viven en el volumen `todo-app_db-data`, montado en `/var/lib/postgresql`. Desde PostgreSQL 18 la imagen oficial guarda los datos en un subdirectorio por versión mayor, por eso el volumen se monta en esa carpeta y no en `/var/lib/postgresql/data` como en versiones anteriores.
+- El healthcheck usa `pg_isready` contra la base de la aplicación; los servicios que dependan de la base esperan a que esté `healthy`.
+- Si falta una variable obligatoria en `.env`, `docker compose` se detiene con un mensaje como `required variable POSTGRES_DB is missing a value`.
+- Si el puerto 5432 ya está ocupado en tu máquina, cambia `POSTGRES_PORT` en `.env` (y el puerto de `DATABASE_URL`).
 
 ## Decisiones técnicas tomadas
 

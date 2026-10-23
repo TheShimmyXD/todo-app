@@ -1,0 +1,31 @@
+# Local infrastructure for the To-Do App.
+# Values come from `.env` (copy `.env.example`); compose stops with a clear
+# message if a required one is missing instead of starting a broken database.
+
+name: todo-app
+
+services:
+  db:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Since PostgreSQL 18 the image keeps its data under /var/lib/postgresql/<major>/,
+      # so the volume is mounted on the parent folder (not on .../data as before).
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      # Healthy only when the server accepts connections to the app database,
+      # so dependent services can wait on `condition: service_healthy`.
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  db-data:
