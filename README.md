@@ -31,7 +31,7 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 
 | Ruta | Contenido |
 |---|---|
-| `backend/` | API REST con Express (`src/`) y dueño del esquema (`prisma/schema.prisma`, `prisma/migrations/`, `prisma.config.ts`). |
+| `backend/` | API REST con Express (`src/`), sus pruebas (`tests/`) y dueño del esquema (`prisma/schema.prisma`, `prisma/migrations/`, `prisma.config.ts`). |
 | `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
 | `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. |
 | `docker-compose.yml` | Servicios de Docker. Por ahora, solo `db` (PostgreSQL con volumen persistente y healthcheck). |
@@ -48,6 +48,7 @@ Copia la plantilla y ajusta los valores: `cp .env.example .env`. El archivo `.en
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Contenedor de PostgreSQL | Usuario, contraseña y base que se crean al iniciar el contenedor. |
 | `POSTGRES_PORT` | Docker Compose | Puerto de la máquina donde se publica PostgreSQL. |
 | `DATABASE_URL` | Prisma y el pool de Express | Cadena de conexión a la base. |
+| `TEST_DATABASE_URL` | Pruebas del backend | Base aparte que usan las pruebas (`todo_test`); se crea sola y debe ser distinta de `DATABASE_URL`. |
 | `API_PORT` | Express | Puerto en el que escucha la API. |
 | `DB_POOL_MAX`, `DB_POOL_IDLE_TIMEOUT_MS`, `DB_POOL_CONNECTION_TIMEOUT_MS` | Pool de Express | Tamaño y tiempos de espera del pool (opcionales; valores por defecto en [`docs/api.md`](docs/api.md#pool-de-conexiones)). |
 | `BACKEND_URL` | Route Handlers de Next.js | URL base de la API a la que se reenvían las escrituras. Solo existe en el servidor. |
@@ -81,6 +82,7 @@ cd backend
 npm ci && npm run db:deploy     # solo la primera vez
 npm run dev                     # http://localhost:4000, recarga al guardar
 curl localhost:4000/health      # {"status":"ok"}
+npm test                        # pruebas contra la base todo_test
 ```
 
 Endpoints, reglas de validación, formato de errores y cómo agregar un endpoint: [`docs/api.md`](docs/api.md).

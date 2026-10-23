@@ -17,7 +17,9 @@ npm run dev                      # API en http://localhost:4000, se reinicia al 
 | `npm run dev` | Corre `src/server.ts` con `tsx watch`: sin compilar y con recarga automática. |
 | `npm run build` | Compila `src/` a `dist/` con `tsc` (`tsconfig.build.json`). |
 | `npm start` | Corre la versión compilada (`node dist/server.js`). Es lo que usa producción. |
-| `npm run typecheck` | Revisa los tipos de todo el paquete sin generar archivos. |
+| `npm run lint` | ESLint con las reglas recomendadas de TypeScript (`eslint.config.js`). |
+| `npm run typecheck` | Revisa los tipos de todo el paquete (código, pruebas y configuración) sin generar archivos. |
+| `npm test` | Corre las pruebas una vez (ver [Pruebas](#pruebas)). `npm run test:watch` las repite al guardar. |
 | `npm run db:migrate` / `db:deploy` / `db:status` | Migraciones de Prisma (ver [`database.md`](database.md)). |
 
 Comprobación rápida: `curl localhost:4000/health` → `{"status":"ok"}`.
@@ -113,7 +115,26 @@ Ejemplo: `PATCH /api/tasks/:id/toggle`, que invierte `completed`.
 2. **Validación** en `src/validation/tasks.ts`: un esquema con `z.strictObject` para el cuerpo o los parámetros (aquí basta `taskIdSchema`).
 3. **Ruta** en `src/routes/tasks.ts` (o un archivo nuevo en `routes/`, montado en `app.ts`): `validate(...)`, llamar a la función de `db/`, responder. Para un caso de error, `throw new HttpError(status, "CODE", "message")`; no hace falta `try/catch`, Express 5 pasa al middleware las promesas rechazadas.
 4. **Documentación**: la fila en la tabla de endpoints de este archivo y, si hay un código de error nuevo, en la tabla de errores.
-5. **Pruebas** en `tests/`.
+5. **Pruebas** en `tests/`: el caso feliz y cada error nuevo (ver [Pruebas](#pruebas)).
+
+## Pruebas
+
+Vitest y supertest: cada prueba hace peticiones HTTP reales a la aplicación (`createApp()`, sin abrir un puerto) y esta consulta una base PostgreSQL real.
+
+```bash
+docker compose up -d db          # la base tiene que estar arriba
+cd backend && npm test           # 31 pruebas en ~3 s
+```
+
+- **Base aparte.** Las pruebas usan `TEST_DATABASE_URL` (por defecto, la base `todo_test` en el mismo contenedor), nunca la de desarrollo. `vitest.config.ts` se niega a correr si las dos URL coinciden, porque cada prueba vacía la tabla.
+- **Preparación automática.** `tests/global-setup.ts` crea la base de pruebas si no existe y le aplica las migraciones (`prisma migrate deploy`) antes de la primera prueba. No hay que hacer nada a mano, ni siquiera la primera vez.
+- **Datos.** Cada prueba empieza con `TRUNCATE tasks` y crea lo que necesita. Por eso los archivos corren uno detrás de otro (`fileParallelism: false`).
+- **Fallas de la base.** Los casos 500 y 503 se simulan haciendo que `pool.query` falle una vez (`vi.spyOn`), sin detener el contenedor.
+
+| Archivo | Qué cubre |
+|---|---|
+| `tests/tasks.test.ts` | Los 4 endpoints de tareas: casos felices, cada regla de validación, orden, filtro, 404 por id inexistente, JSON roto y cuerpo demasiado grande. |
+| `tests/app.test.ts` | `/health` (200 y 503), ruta inexistente (404), error inesperado (500 sin filtrar el detalle) y cabeceras. |
 
 ## Pool de conexiones
 
