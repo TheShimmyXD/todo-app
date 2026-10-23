@@ -5,6 +5,9 @@
 // `@prisma/adapter-pg`. In development, hot reload re-evaluates this module on
 // every change; caching the instance on `globalThis` avoids opening a new
 // connection pool each time.
+// The client is created on first use, not when the module is imported:
+// `next build` imports this file while it collects page data, and the build
+// (Docker image included) must not need a database URL.
 import "server-only";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -19,8 +22,15 @@ function createClient(): PrismaClient {
   return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 }
 
-export const prisma = globalForPrisma.prisma ?? createClient();
+let client: PrismaClient | undefined = globalForPrisma.prisma;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+/** Returns the shared client, creating it on the first call. */
+export function getPrisma(): PrismaClient {
+  if (!client) {
+    client = createClient();
+    if (process.env.NODE_ENV !== "production") {
+      globalForPrisma.prisma = client;
+    }
+  }
+  return client;
 }

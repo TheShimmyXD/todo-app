@@ -1,0 +1,12 @@
+# Files kept out of the build context rooted at the repository (used by the
+# frontend image, which also needs backend/prisma/schema.prisma).
+# Dependencies, builds and the generated Prisma client are recreated inside the
+# image; secrets and Git history never go in.
+.git
+.env
+.env.*
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+frontend/generated

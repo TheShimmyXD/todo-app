@@ -1,17 +1,25 @@
-# Local infrastructure for the To-Do App.
-# Values come from `.env` (copy `.env.example`); compose stops with a clear
-# message if a required one is missing instead of starting a broken database.
+# The whole To-Do App: database, migrations, Express API and Next.js app.
+#   docker compose up --build -d   → everything, on http://localhost:3000
+#   docker compose up -d db        → only PostgreSQL, for local development
+# Every variable has a default, so a fresh clone starts without a `.env`; to
+# change ports or credentials, copy `.env.example` to `.env` (see docs/docker.md).
+# Startup order: db (healthy) → migrate (exits 0) → backend (healthy) → frontend.
 
 name: todo-app
+
+# Connection string the containers use: same credentials as the `db` service,
+# but the host is the service name inside the compose network, not localhost.
+# The credentials go into a URL, so they must not contain `@`, `:`, `/` or `#`.
+x-database-url: &database-url "postgresql://${POSTGRES_USER:-todo}:${POSTGRES_PASSWORD:-todo}@db:5432/${POSTGRES_DB:-todo}"
 
 services:
   db:
     image: postgres:18.6-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:-todo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-todo}
+      POSTGRES_DB: ${POSTGRES_DB:-todo}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -26,6 +34,64 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  # Applies pending Prisma migrations (`prisma migrate deploy`) and exits.
+  # It never creates migrations: those are written in development with
+  # `npm run db:migrate` inside backend/ and committed.
+  migrate:
+    build:
+      context: ./backend
+      target: migrate
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: *database-url
+      API_PORT: 4000
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_POOL_IDLE_TIMEOUT_MS: ${DB_POOL_IDLE_TIMEOUT_MS:-30000}
+      DB_POOL_CONNECTION_TIMEOUT_MS: ${DB_POOL_CONNECTION_TIMEOUT_MS:-5000}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # /health answers 200 only when the API can query the database. The slim
+      # image has no curl, so Node's own fetch does the request.
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      # The repository root, because the image generates the Prisma client from
+      # backend/prisma/schema.prisma.
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    environment:
+      # Reads with Prisma go straight to the database; writes are forwarded to
+      # Express by the route handlers, through the compose network.
+      DATABASE_URL: *database-url
+      BACKEND_URL: http://backend:4000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   db-data:

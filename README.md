@@ -34,8 +34,10 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 | `backend/` | API REST con Express (`src/`), sus pruebas (`tests/`) y dueño del esquema (`prisma/schema.prisma`, `prisma/migrations/`, `prisma.config.ts`). |
 | `frontend/` | Interfaz web con Next.js: páginas (`app/`), componentes (`components/`), lectura con Prisma (`lib/`). El cliente de Prisma se genera en `generated/` desde el schema del backend. |
 | `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
-| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. |
-| `docker-compose.yml` | Servicios de Docker. Por ahora, solo `db` (PostgreSQL con volumen persistente y healthcheck). |
+| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. `docker.md`: imágenes, orden de arranque, variables y problemas comunes. |
+| `docker-compose.yml` | Toda la aplicación: `db` (PostgreSQL con volumen y healthcheck), `migrate` (aplica las migraciones), `backend` y `frontend`. |
+| `backend/Dockerfile`, `frontend/Dockerfile` | Imágenes de la API y de la web, en varias etapas (ver [`docs/docker.md`](docs/docker.md)). |
+| `.dockerignore`, `backend/.dockerignore` | Lo que queda fuera de cada contexto de build (dependencias, compilados, `.env`). |
 | `.env.example` | Plantilla de todas las variables de entorno (ver más abajo). |
 | `.editorconfig` | Codificación, finales de línea e indentación comunes para cualquier editor. |
 | `.gitignore` | Dependencias, salidas de compilación y archivos `.env` locales que nunca se versionan. |
@@ -44,10 +46,13 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 
 Copia la plantilla y ajusta los valores: `cp .env.example .env`. El archivo `.env` está en `.gitignore`; solo se versiona `.env.example`.
 
+Para levantar todo con Docker no hace falta `.env`: `docker-compose.yml` trae un valor por defecto para cada variable y arma sus propias URLs internas (ver [`docs/docker.md`](docs/docker.md#variables)). `.env` hace falta para correr la API o la web fuera de Docker.
+
 | Variable | Quién la usa | Para qué |
 |---|---|---|
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | Contenedor de PostgreSQL | Usuario, contraseña y base que se crean al iniciar el contenedor. |
 | `POSTGRES_PORT` | Docker Compose | Puerto de la máquina donde se publica PostgreSQL. |
+| `FRONTEND_PORT` | Docker Compose | Puerto de la máquina donde se publica la web (por defecto 3000). |
 | `DATABASE_URL` | Prisma y el pool de Express | Cadena de conexión a la base. |
 | `TEST_DATABASE_URL` | Pruebas del backend | Base aparte que usan las pruebas (`todo_test`); se crea sola y debe ser distinta de `DATABASE_URL`. |
 | `API_PORT` | Express | Puerto en el que escucha la API. |
@@ -59,6 +64,17 @@ Copia la plantilla y ajusta los valores: `cp .env.example .env`. El archivo `.en
 *Pendiente.*
 
 ## Comandos para correr el proyecto
+
+### Todo con Docker
+
+```bash
+docker compose up --build -d    # base, migraciones, API y web
+docker compose ps -a            # db y backend (healthy), frontend Up, migrate Exited (0)
+```
+
+Web en http://localhost:3000 y API en http://localhost:4000. Servicios, imágenes, variables y problemas comunes: [`docs/docker.md`](docs/docker.md).
+
+Para desarrollar, lo habitual es levantar solo la base en Docker y correr la API y la web con `npm run dev` (secciones siguientes).
 
 ### Base de datos (PostgreSQL en Docker)
 
@@ -73,7 +89,6 @@ docker compose down -v          # borra el contenedor y el volumen: la base qued
 
 - Los datos viven en el volumen `todo-app_db-data`, montado en `/var/lib/postgresql`. Desde PostgreSQL 18 la imagen oficial guarda los datos en un subdirectorio por versión mayor, por eso el volumen se monta en esa carpeta y no en `/var/lib/postgresql/data` como en versiones anteriores.
 - El healthcheck usa `pg_isready` contra la base de la aplicación; los servicios que dependan de la base esperan a que esté `healthy`.
-- Si falta una variable obligatoria en `.env`, `docker compose` se detiene con un mensaje como `required variable POSTGRES_DB is missing a value`.
 - Si el puerto 5432 ya está ocupado en tu máquina, cambia `POSTGRES_PORT` en `.env` (y el puerto de `DATABASE_URL`).
 
 ### API (Express)

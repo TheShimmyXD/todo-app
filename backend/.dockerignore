@@ -1,0 +1,10 @@
+# Files kept out of the backend image build context (`backend/`).
+# Dependencies and builds are recreated inside the image; secrets never go in.
+node_modules
+dist
+tests
+*.tsbuildinfo
+.env
+.env.*
+Dockerfile
+.dockerignore

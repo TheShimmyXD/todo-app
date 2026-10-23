@@ -82,6 +82,8 @@ El schema vive solo en `backend/prisma/schema.prisma` (dueño único, con sus mi
 
 Prisma 7 necesita un *driver adapter*: el cliente se crea con `@prisma/adapter-pg` sobre `DATABASE_URL`. Desde el frontend nunca se corre `prisma migrate`.
 
+El cliente se obtiene con `getPrisma()` (`lib/prisma.ts`), que lo crea en la primera consulta y lo reutiliza. No se crea al importar el módulo porque `next build` importa las páginas para recolectar sus datos, y el build (también el de la imagen de Docker) no debe necesitar `DATABASE_URL`.
+
 ## Variables de entorno
 
 Next.js solo lee `.env` de su propia carpeta. El proyecto tiene un único `.env` en la raíz del repositorio, así que `next.config.ts` lo carga con `dotenv`; las variables que ya existen en el entorno (Docker, CI) tienen prioridad. El frontend usa `DATABASE_URL` (lectura con Prisma) y `BACKEND_URL` (reenvío de escrituras a Express). Ninguna lleva el prefijo `NEXT_PUBLIC_`, así que ninguna llega al navegador.
