@@ -25,7 +25,7 @@ export function TaskItem({ task }: { task: TaskItemData }) {
 
   // Both actions share the flow: call the API, then re-render the page from the
   // database. While the request runs the row is disabled.
-  function run(action: () => Promise<void>, fallback: string) {
+  function run(action: () => Promise<unknown>, fallback: string) {
     setError(null);
     startTransition(async () => {
       try {

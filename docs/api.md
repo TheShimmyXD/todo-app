@@ -83,6 +83,8 @@ Todos los errores salen con la misma forma, la produce un único middleware (`sr
 
 `details` solo aparece en los errores de validación. El cliente debe decidir con `code` (estable) y mostrar `message` como texto de apoyo.
 
+La interfaz web llega a esta API a través de los Route Handlers de Next (`/api/tasks` en el puerto 3000), que devuelven estas mismas respuestas y solo añaden `502 BACKEND_UNAVAILABLE` y `504 BACKEND_TIMEOUT` cuando Express no contesta (ver [`frontend.md`](frontend.md#route-handlers-el-puente-con-express)).
+
 | Estado | `code` | Cuándo |
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | Cuerpo, parámetro o filtro que no cumple las reglas. |

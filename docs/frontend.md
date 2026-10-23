@@ -22,6 +22,9 @@ Interfaz web de la aplicación, en `frontend/`. Next.js 16 con App Router, React
 | `components/StatusTabs.tsx` | Pestañas Todas / Pendientes / Completadas con contador. Son enlaces: no necesitan JavaScript en el navegador. | Server |
 | `components/TaskList.tsx` | Lista de tareas del filtro actual y mensaje de lista vacía. Formatea las fechas y pasa datos planos a cada fila. | Server |
 | `components/TaskItem.tsx` | Una fila: casilla para completar o reabrir, botón «Eliminar» y el error de esa fila. | Client |
+| `app/api/tasks/route.ts` | Route Handler de `GET` (con `?completed=`) y `POST /api/tasks`: reenvía a Express. | Server |
+| `app/api/tasks/[id]/route.ts` | Route Handler de `PUT` y `DELETE /api/tasks/:id`: reenvía a Express. | Server |
+| `lib/backend.ts` | El reenvío a `${BACKEND_URL}`: mismo método, cuerpo, status y respuesta; 502 o 504 si Express no contesta. | Solo servidor |
 | `lib/api.ts` | Llamadas de escritura a `/api/tasks` desde el navegador y traducción de los errores de Express a mensajes en español. | Navegador |
 | `lib/prisma.ts` | Cliente de Prisma compartido (singleton en `globalThis` para el modo dev). | Solo servidor |
 | `lib/tasks.ts` | Filtro de la URL (`parseStatusFilter`) y consultas: `listTasks`, `countTasks`. | Solo servidor |
@@ -30,7 +33,7 @@ Interfaz web de la aplicación, en `frontend/`. Next.js 16 con App Router, React
 | `prisma.config.ts` | Le dice al CLI de Prisma dónde está el schema (`../backend/prisma/schema.prisma`). | — |
 | `next.config.ts` | Carga el `.env` de la raíz del repositorio y activa Cache Components. | — |
 
-`lib/prisma.ts` y `lib/tasks.ts` importan `server-only`: si un Client Component los importa por error, el build falla en lugar de mandar el cliente de la base al navegador.
+`lib/prisma.ts`, `lib/tasks.ts` y `lib/backend.ts` importan `server-only`: si un Client Component los importa por error, el build falla en lugar de mandar el cliente de la base al navegador.
 
 **Server o Client:** todo es Server Component salvo lo que necesita estado o eventos del navegador: el formulario (`NewTaskForm`), cada fila con sus botones (`TaskItem`) y `error.tsx` (Next exige que los límites de error sean Client). Así la lista llega como HTML ya armado y el JavaScript que descarga el navegador es mínimo. `TaskList` sigue en el servidor: calcula «hace 5 minutos» una sola vez y le pasa a `TaskItem` texto ya listo, así servidor y navegador pintan lo mismo (sin avisos de hidratación).
 
@@ -46,7 +49,25 @@ Client Component ──fetch──▶ /api/tasks (Route Handler de Next) ──�
 2. Si la respuesta es correcta, `router.refresh()` le pide al servidor la página otra vez: la lista y los contadores salen de la base, no de un parche en el navegador.
 3. Si falla, `lib/api.ts` lanza un `ApiError` con un mensaje en español elegido por el `code` de Express (o por el campo inválido) y el componente lo muestra con `role="alert"`: debajo del formulario o dentro de la fila.
 
-Los Route Handlers `/api/tasks` y `/api/tasks/[id]` que reenvían a Express (`BACKEND_URL`) son el paso siguiente; mientras no existan, cada acción muestra «El servidor respondió con un error (404)».
+## Route Handlers: el puente con Express
+
+El navegador solo habla con Next (`/api/tasks`, mismo origen: sin CORS y sin exponer la dirección de Express). Los Route Handlers no validan nada: `lib/backend.ts` reenvía método, cuerpo crudo y query string a `${BACKEND_URL}` y devuelve **el mismo status y el mismo cuerpo** que Express. Así las reglas y los códigos de error viven en un solo lugar ([`api.md`](api.md)).
+
+| Situación | Respuesta de `/api/tasks…` |
+|---|---|
+| Express responde (éxito o error) | Su status y su cuerpo, sin cambios (201, 200, 204, 400, 404, 413, 500, 503). |
+| Express no está corriendo o `BACKEND_URL` es incorrecta | `502` `{"error":{"code":"BACKEND_UNAVAILABLE",…}}`, y el detalle va al log de Next. |
+| Express no contesta en 10 s | `504` `{"error":{"code":"BACKEND_TIMEOUT",…}}`. |
+
+Los dos códigos propios usan el formato de error de Express, así `lib/api.ts` los trata igual que los demás.
+
+**Tipos:** `ApiTask` (en `lib/api.ts`) es la forma de una tarea en JSON y coincide con la respuesta de Express. Se diferencia del `Task` de Prisma solo en `createdAt`, que viaja como texto ISO 8601; no se vuelve a convertir a `Date` porque, tras cada cambio, la lista se relee en el servidor con Prisma (que ya entrega `Date`).
+
+```bash
+# con la base, Express (:4000) y Next (:3000) arriba
+curl localhost:3000/api/tasks?completed=false
+curl -X POST localhost:3000/api/tasks -H 'Content-Type: application/json' -d '{"title":"Comprar pan"}'
+```
 
 **Cómo se agrega una acción** (por ejemplo, editar el título): una función nueva en `lib/api.ts` que llame al endpoint de Express ya existente (`PUT` con `title`), y en `TaskItem` un control que la use con `run(...)`, que ya trae el estado de espera, el error y el refresco.
 

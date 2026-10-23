@@ -8,6 +8,20 @@
 export const TITLE_MAX = 200;
 export const DESCRIPTION_MAX = 2000;
 
+/**
+ * A task as the API returns it (JSON). It matches Express's response; the only
+ * difference with the Prisma `Task` used on the server is `createdAt`, which
+ * travels as an ISO 8601 string and is not converted back to `Date` here
+ * because the UI re-reads the list from the server after every change.
+ */
+export type ApiTask = {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  createdAt: string;
+};
+
 type ErrorBody = {
   error?: { code?: string; message?: string; details?: { field?: string }[] };
 };
@@ -24,6 +38,9 @@ const CODE_MESSAGE: Record<string, string> = {
   PAYLOAD_TOO_LARGE: "El texto es demasiado largo.",
   DATABASE_UNAVAILABLE: "La base de datos no responde. Intenta de nuevo en unos segundos.",
   INTERNAL_ERROR: "El servidor tuvo un error. Intenta de nuevo.",
+  // Added by the Route Handlers when Express itself cannot be reached.
+  BACKEND_UNAVAILABLE: "El servicio de tareas no está disponible. Intenta de nuevo en unos segundos.",
+  BACKEND_TIMEOUT: "El servicio de tareas tardó demasiado en responder. Intenta de nuevo.",
 };
 
 /** A failed API call, with a message ready to show to the user. */
@@ -40,8 +57,8 @@ export class ApiError extends Error {
 
 /**
  * Builds the user-facing message: the field rule for validation errors, the
- * message for a known `code`, or a generic one with the status (for example a
- * 404 HTML page when the route does not exist yet).
+ * message for a known `code`, or a generic one with the status (for example an
+ * HTML error page from a proxy in front of the app).
  */
 function toApiError(status: number, body: ErrorBody | null): ApiError {
   const code = body?.error?.code;
@@ -53,7 +70,8 @@ function toApiError(status: number, body: ErrorBody | null): ApiError {
   return new ApiError(message, status, code);
 }
 
-async function request(path: string, init: RequestInit): Promise<void> {
+/** Sends the request and returns the raw response if it succeeded (2xx). */
+async function request(path: string, init: RequestInit): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(path, {
@@ -67,19 +85,22 @@ async function request(path: string, init: RequestInit): Promise<void> {
     const body = (await response.json().catch(() => null)) as ErrorBody | null;
     throw toApiError(response.status, body);
   }
+  return response;
 }
 
-export function createTask(input: { title: string; description: string }) {
-  return request("/api/tasks", { method: "POST", body: JSON.stringify(input) });
+export async function createTask(input: { title: string; description: string }): Promise<ApiTask> {
+  const response = await request("/api/tasks", { method: "POST", body: JSON.stringify(input) });
+  return (await response.json()) as ApiTask;
 }
 
-export function setTaskCompleted(id: string, completed: boolean) {
-  return request(`/api/tasks/${encodeURIComponent(id)}`, {
+export async function setTaskCompleted(id: string, completed: boolean): Promise<ApiTask> {
+  const response = await request(`/api/tasks/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify({ completed }),
   });
+  return (await response.json()) as ApiTask;
 }
 
-export function deleteTask(id: string) {
-  return request(`/api/tasks/${encodeURIComponent(id)}`, { method: "DELETE" });
+export async function deleteTask(id: string): Promise<void> {
+  await request(`/api/tasks/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
