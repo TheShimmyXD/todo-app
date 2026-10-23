@@ -1,0 +1,21 @@
+# Files that must never reach the repository: installed dependencies,
+# build output and local secrets. Each package may add its own rules.
+
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment: only the documented template is versioned
+.env
+.env.*
+!.env.example
+
+# Logs and OS noise
+*.log
+npm-debug.log*
+.DS_Store
