@@ -16,9 +16,13 @@ Interfaz web de la aplicación, en `frontend/`. Next.js 16 con App Router, React
 | Ruta | Qué es | Server o Client |
 |---|---|---|
 | `app/layout.tsx` | Layout raíz: idioma, metadatos y estilos base. | Server |
-| `app/page.tsx` | Página principal: título y, dentro de `<Suspense>`, pestañas y lista. | Server |
+| `app/page.tsx` | Página principal: título, formulario y, dentro de `<Suspense>`, pestañas y lista. | Server |
+| `app/error.tsx` | Lo que se muestra si la página falla al leer (por ejemplo, la base caída), con botón «Reintentar». | Client |
+| `components/NewTaskForm.tsx` | Formulario de nueva tarea: título obligatorio, descripción opcional, error en pantalla. | Client |
 | `components/StatusTabs.tsx` | Pestañas Todas / Pendientes / Completadas con contador. Son enlaces: no necesitan JavaScript en el navegador. | Server |
-| `components/TaskList.tsx` | Lista de tareas del filtro actual y mensaje de lista vacía. | Server |
+| `components/TaskList.tsx` | Lista de tareas del filtro actual y mensaje de lista vacía. Formatea las fechas y pasa datos planos a cada fila. | Server |
+| `components/TaskItem.tsx` | Una fila: casilla para completar o reabrir, botón «Eliminar» y el error de esa fila. | Client |
+| `lib/api.ts` | Llamadas de escritura a `/api/tasks` desde el navegador y traducción de los errores de Express a mensajes en español. | Navegador |
 | `lib/prisma.ts` | Cliente de Prisma compartido (singleton en `globalThis` para el modo dev). | Solo servidor |
 | `lib/tasks.ts` | Filtro de la URL (`parseStatusFilter`) y consultas: `listTasks`, `countTasks`. | Solo servidor |
 | `lib/format.ts` | Fecha relativa en español («hace 5 minutos», «ayer»). | Ambos |
@@ -28,7 +32,28 @@ Interfaz web de la aplicación, en `frontend/`. Next.js 16 con App Router, React
 
 `lib/prisma.ts` y `lib/tasks.ts` importan `server-only`: si un Client Component los importa por error, el build falla en lugar de mandar el cliente de la base al navegador.
 
-**Server o Client:** todo es Server Component salvo lo que necesita estado o eventos del navegador (formulario, botones de completar y eliminar), que llevará `'use client'`. Así la lista llega como HTML ya armado y el JavaScript que descarga el navegador es mínimo.
+**Server o Client:** todo es Server Component salvo lo que necesita estado o eventos del navegador: el formulario (`NewTaskForm`), cada fila con sus botones (`TaskItem`) y `error.tsx` (Next exige que los límites de error sean Client). Así la lista llega como HTML ya armado y el JavaScript que descarga el navegador es mínimo. `TaskList` sigue en el servidor: calcula «hace 5 minutos» una sola vez y le pasa a `TaskItem` texto ya listo, así servidor y navegador pintan lo mismo (sin avisos de hidratación).
+
+## Cómo fluye una mutación
+
+```
+Client Component ──fetch──▶ /api/tasks (Route Handler de Next) ──▶ Express ──▶ PostgreSQL
+       ▲                                                                          │
+       └──── router.refresh(): el servidor vuelve a leer con Prisma ◀─────────────┘
+```
+
+1. El componente llama a `createTask`, `setTaskCompleted` o `deleteTask` de `lib/api.ts` dentro de `startTransition` (`useTransition`). Mientras espera, los controles quedan deshabilitados («Agregando…», la fila parpadea).
+2. Si la respuesta es correcta, `router.refresh()` le pide al servidor la página otra vez: la lista y los contadores salen de la base, no de un parche en el navegador.
+3. Si falla, `lib/api.ts` lanza un `ApiError` con un mensaje en español elegido por el `code` de Express (o por el campo inválido) y el componente lo muestra con `role="alert"`: debajo del formulario o dentro de la fila.
+
+Los Route Handlers `/api/tasks` y `/api/tasks/[id]` que reenvían a Express (`BACKEND_URL`) son el paso siguiente; mientras no existan, cada acción muestra «El servidor respondió con un error (404)».
+
+**Cómo se agrega una acción** (por ejemplo, editar el título): una función nueva en `lib/api.ts` que llame al endpoint de Express ya existente (`PUT` con `title`), y en `TaskItem` un control que la use con `run(...)`, que ya trae el estado de espera, el error y el refresco.
+
+## Errores
+
+- **Al escribir:** el mensaje va junto a lo que falló (formulario o fila); el resto de la página sigue usable.
+- **Al leer:** si Prisma no llega a la base, la lista (que va por streaming dentro de `<Suspense>`) falla y Next pinta `app/error.tsx` en su lugar. En producción el navegador no recibe el detalle, solo un `digest` que coincide con el error completo en el log del servidor. «Reintentar» llama a `retry()` (Next 16.3+), que vuelve a pedir la página al servidor.
 
 ## El cliente de Prisma
 
