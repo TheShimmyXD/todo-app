@@ -44,7 +44,7 @@ Las dos usan `node:24.22.1-trixie-slim` (Debian, no Alpine: el motor de esquema 
 | `runtime` | `dist/` + dependencias de producción (~245 MB). |
 | `migrate` | `deps` + `prisma/` + `prisma.config.ts` + OpenSSL; es la última etapa para que construir `runtime` no la arrastre. |
 
-**Frontend** (`frontend/Dockerfile`, contexto la **raíz** del repositorio): el cliente de Prisma se genera desde `backend/prisma/schema.prisma`, así que la imagen necesita ver las dos carpetas. El schema se copia a la misma ruta relativa que en el repositorio para que el `output` del generator (`../../frontend/generated/prisma`) caiga dentro del paquete. `next build` (con `output: "standalone"` en `next.config.ts`) deja en `.next/standalone` un `server.js` mínimo y solo los archivos que usa; la imagen copia eso más `.next/static` (~280 MB).
+**Frontend** (`frontend/Dockerfile`, contexto la **raíz** del repositorio): el cliente de Prisma se genera desde `backend/prisma/schema.prisma`, así que la imagen necesita ver las dos carpetas. El schema se copia a la misma ruta relativa que en el repositorio para que el `output` del generator (`../../frontend/generated/prisma`) caiga dentro del paquete. `next build` (con `NEXT_OUTPUT=standalone`, que `next.config.ts` traduce a `output: "standalone"` solo dentro de la imagen, porque `next start` no admite ese modo) deja en `.next/standalone` un `server.js` mínimo y solo los archivos que usa; la imagen copia eso más `.next/static` (~280 MB).
 
 El build no necesita la base ni `DATABASE_URL`: el cliente de Prisma se crea en la primera consulta (`getPrisma()` en `frontend/lib/prisma.ts`), no al importar el módulo.
 

@@ -10,10 +10,11 @@ import type { NextConfig } from "next";
 config({ path: fileURLToPath(new URL("../.env", import.meta.url)), quiet: true });
 
 const nextConfig: NextConfig = {
-  // `next build` also writes `.next/standalone`: a minimal `server.js` plus only
-  // the files it needs, which is what the Docker image runs (frontend/Dockerfile).
-  // `npm start` (`next start`) keeps working for local production checks.
-  output: "standalone",
+  // The Docker image sets NEXT_OUTPUT=standalone so `next build` writes
+  // `.next/standalone`: a minimal `server.js` plus only the files it needs
+  // (frontend/Dockerfile). Elsewhere the regular output is kept, because
+  // `next start` (`npm start`) does not support standalone builds.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // Cache Components (the Next.js 16 default for new apps): data is dynamic
   // unless marked with "use cache", and request-time data streams inside
   // <Suspense>. Partial Prefetching must be set explicitly alongside it.

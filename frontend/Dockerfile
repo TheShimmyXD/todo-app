@@ -17,6 +17,7 @@ RUN npm ci
 # to the same relative place as in the repository, so the generator's `output`
 # path (`../../frontend/generated/prisma`) resolves to this package.
 FROM deps AS build
+ENV NEXT_OUTPUT=standalone
 COPY backend/prisma/schema.prisma /app/backend/prisma/schema.prisma
 COPY frontend/ ./
 RUN npm run build
