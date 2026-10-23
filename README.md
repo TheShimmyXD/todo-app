@@ -2,6 +2,8 @@
 
 Aplicación de tareas para un equipo: crear, listar, filtrar (todas, completadas y pendientes), editar, marcar como completada y eliminar tareas. El backend es una API REST en Express y TypeScript sobre PostgreSQL; el frontend es una aplicación Next.js con Prisma; todo se levanta con Docker Compose.
 
+Cada requisito del enunciado de la prueba, con el archivo que lo resuelve y la orden que lo comprueba, está en [`docs/requirements.md`](docs/requirements.md).
+
 ## Tecnologías utilizadas
 
 | Capa | Tecnología | Versión |
@@ -48,7 +50,7 @@ Vista de conjunto, flujos de lectura y escritura y dónde vive cada responsabili
 | `frontend/` | Interfaz web con Next.js: páginas (`app/`), componentes (`components/`), lectura con Prisma (`lib/`). El cliente de Prisma se genera en `generated/` desde el schema del backend. |
 | `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
 | `CONTRIBUTING.md` | Cómo trabajar en equipo: entorno, ramas, commits, qué correr antes de un PR y qué revisar en uno. |
-| `docs/` | Documentación para el equipo. `architecture.md`: componentes, flujos y dónde vive cada responsabilidad. `adding-a-field.md`: cómo agregar un campo de punta a punta. `adr/`: decisiones de arquitectura. `windows.md`: instalación y desarrollo en Windows 11 con PowerShell. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. `docker.md`: imágenes, orden de arranque, variables y problemas comunes. |
+| `docs/` | Documentación para el equipo. `requirements.md`: cada requisito del enunciado, dónde está resuelto y cómo comprobarlo. `architecture.md`: componentes, flujos y dónde vive cada responsabilidad. `adding-a-field.md`: cómo agregar un campo de punta a punta. `adr/`: decisiones de arquitectura. `windows.md`: instalación y desarrollo en Windows 11 con PowerShell. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. `docker.md`: imágenes, orden de arranque, variables y problemas comunes. |
 | `docker-compose.yml` | Toda la aplicación: `db` (PostgreSQL con volumen y healthcheck), `migrate` (aplica las migraciones), `backend` y `frontend`. |
 | `backend/Dockerfile`, `frontend/Dockerfile` | Imágenes de la API y de la web, en varias etapas (ver [`docs/docker.md`](docs/docker.md)). |
 | `.dockerignore`, `backend/.dockerignore` | Lo que queda fuera de cada contexto de build (dependencias, compilados, `.env`). |

@@ -103,6 +103,7 @@ Cada cambio deja su documentación en el mismo PR:
 | Docker, servicios o variables | [`docs/docker.md`](docs/docker.md), `.env.example` y la tabla de variables del README |
 | Una orden de instalación o de desarrollo | El README y su equivalente en PowerShell en [`docs/windows.md`](docs/windows.md) |
 | Una dependencia o su versión | La tabla «Tecnologías utilizadas» del README |
+| Dónde se resuelve un requisito del enunciado o cómo se comprueba | [`docs/requirements.md`](docs/requirements.md) |
 | Algo que contradice una decisión registrada | Un ADR nuevo (ver abajo) |
 
 Cada archivo de código nuevo abre con un comentario breve que dice qué hace y por qué existe.
