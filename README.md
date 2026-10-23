@@ -289,4 +289,4 @@ cd todo-app
 docker compose up --build -d    # web en http://localhost:3000
 ```
 
-Para desarrollar con Node instalado en Windows, las órdenes en PowerShell, la política de ejecución de scripts y los problemas comunes (puertos reservados, máquinas virtuales): [`docs/windows.md`](docs/windows.md). *Pendiente de comprobar en Windows 11.*
+Para desarrollar con Node instalado en Windows, las órdenes en PowerShell, la política de ejecución de scripts y los problemas comunes (puertos reservados, máquinas virtuales): [`docs/windows.md`](docs/windows.md). Comprobado en Windows 11 Pro con PowerShell 5.1 (detalle en esa página).

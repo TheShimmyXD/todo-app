@@ -2,7 +2,7 @@
 
 Cómo levantar y desarrollar el proyecto en Windows 11, con PowerShell. Hay dos caminos, igual que en Linux: todo con Docker Desktop, o la base en Docker y la API y la web con Node instalado en Windows.
 
-> **Pendiente de comprobar en Windows 11.** Los cambios para Windows (finales de línea y el arranque de las pruebas) se verificaron en Linux; las órdenes de esta página todavía no se corrieron en un Windows 11 real.
+> **Comprobado en Windows 11 Pro** (Windows PowerShell 5.1, Git para Windows con `core.autocrlf=true`, Docker Desktop 4.96.3, Node 24.22.1) desde un clon limpio: checkout sin CRLF, la opción A completa (`docker compose up --build -d` en 90 s, `/health`, crear, editar, filtrar y eliminar por la web y por la API, tildes y ñ guardadas en UTF-8) y, de la opción B, `npm ci`, `db:deploy`, lint, typecheck, las 31 pruebas del backend y el build del frontend. `npm run dev` no se probó en Windows.
 
 Todas las órdenes son para **PowerShell** y funcionan igual en Windows PowerShell 5.1 (el que trae Windows) y en PowerShell 7. Por eso cada orden va en su propia línea: PowerShell 5.1 no entiende `&&`.
 
@@ -74,6 +74,18 @@ Las demás órdenes del README valen tal cual en PowerShell, con dos diferencias
 | `docker compose exec -T db psql -U todo -d todo < db/queries.sql` | `Get-Content db\queries.sql \| docker compose exec -T db psql -U todo -d todo` |
 | `npm run db:migrate -- --name <cambio>` | `npx prisma migrate dev --name <cambio>` (en `backend\`) |
 | `orden1 && orden2` | Una orden por línea |
+
+### Llamar a la API desde PowerShell
+
+Los ejemplos con `curl -d '{...}'` de [`api.md`](api.md) no sirven tal cual en PowerShell 5.1: al pasarle el JSON a `curl.exe` le quita las comillas internas y Express responde `INVALID_JSON`. Usa `Invoke-RestMethod`, y manda el cuerpo como bytes UTF-8: si se lo pasas como texto, PowerShell 5.1 no lo codifica en UTF-8 y las tildes y la ñ llegan como `�`.
+
+```powershell
+$api = "http://localhost:3000/api/tasks"
+$body = [Text.Encoding]::UTF8.GetBytes((@{ title = "Comprar pan" } | ConvertTo-Json))
+$task = Invoke-RestMethod -Method Post -Uri $api -ContentType "application/json; charset=utf-8" -Body $body
+Invoke-RestMethod -Uri "$api`?completed=false"
+Invoke-RestMethod -Method Delete -Uri "$api/$($task.id)"
+```
 
 ## Pruebas y comprobaciones antes de un PR
 
