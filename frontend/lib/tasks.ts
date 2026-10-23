@@ -1,6 +1,6 @@
 // Read-side helpers for the task list: the status filter taken from the URL and
 // the Prisma queries behind the page. Kept apart from the page so the filter
-// rules live in one place (see README, "Cómo se agrega un filtro").
+// rules live in one place (see docs/frontend.md, "Filtros").
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 

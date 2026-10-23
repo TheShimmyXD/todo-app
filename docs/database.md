@@ -72,6 +72,8 @@ Todas las órdenes se corren desde `backend/`, con la base levantada (`docker co
 3. Revisa el `migration.sql` generado antes de hacer commit: es lo que se ejecutará en las demás bases.
 4. Haz commit del schema y de la carpeta de la migración juntos.
 
+El resto del recorrido (SQL de Express, validación, pruebas e interfaz) está en [`adding-a-field.md`](adding-a-field.md).
+
 Nunca se edita una migración que ya está en `main`, ni se cambian las tablas a mano: cualquier corrección va en una migración nueva.
 
 ## Consultas SQL a mano (`db/queries.sql`)

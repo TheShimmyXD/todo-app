@@ -38,7 +38,7 @@ flowchart LR
 - **Next.js lee con Prisma y escribe a través de Express.** Las páginas son Server Components que consultan con el cliente de Prisma (generado desde el mismo schema). Los formularios y botones son Client Components que llaman a los Route Handlers de Next (`/api/tasks`), y estos reenvían la petición a Express sin cambiar su respuesta.
 - Al terminar una escritura, la interfaz pide a Next que vuelva a renderizar la página (`router.refresh()`), y la lista se lee otra vez de la base.
 
-Detalle por capa: [`docs/database.md`](docs/database.md), [`docs/api.md`](docs/api.md), [`docs/frontend.md`](docs/frontend.md) y [`docs/docker.md`](docs/docker.md).
+Vista de conjunto, flujos de lectura y escritura y dónde vive cada responsabilidad: [`docs/architecture.md`](docs/architecture.md). Detalle por capa: [`docs/database.md`](docs/database.md), [`docs/api.md`](docs/api.md), [`docs/frontend.md`](docs/frontend.md) y [`docs/docker.md`](docs/docker.md).
 
 ## Estructura del repositorio
 
@@ -47,7 +47,8 @@ Detalle por capa: [`docs/database.md`](docs/database.md), [`docs/api.md`](docs/a
 | `backend/` | API REST con Express (`src/`), sus pruebas (`tests/`) y dueño del esquema (`prisma/schema.prisma`, `prisma/migrations/`, `prisma.config.ts`). |
 | `frontend/` | Interfaz web con Next.js: páginas (`app/`), componentes (`components/`), lectura con Prisma (`lib/`). El cliente de Prisma se genera en `generated/` desde el schema del backend. |
 | `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
-| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. `docker.md`: imágenes, orden de arranque, variables y problemas comunes. |
+| `CONTRIBUTING.md` | Cómo trabajar en equipo: entorno, ramas, commits, qué correr antes de un PR y qué revisar en uno. |
+| `docs/` | Documentación para el equipo. `architecture.md`: componentes, flujos y dónde vive cada responsabilidad. `adding-a-field.md`: cómo agregar un campo de punta a punta. `adr/`: decisiones de arquitectura. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. `docker.md`: imágenes, orden de arranque, variables y problemas comunes. |
 | `docker-compose.yml` | Toda la aplicación: `db` (PostgreSQL con volumen y healthcheck), `migrate` (aplica las migraciones), `backend` y `frontend`. |
 | `backend/Dockerfile`, `frontend/Dockerfile` | Imágenes de la API y de la web, en varias etapas (ver [`docs/docker.md`](docs/docker.md)). |
 | `.dockerignore`, `backend/.dockerignore` | Lo que queda fuera de cada contexto de build (dependencias, compilados, `.env`). |
@@ -159,7 +160,7 @@ Se resolvió con **un solo schema y un solo camino de escritura**:
 - Next.js usa Prisma solo para **leer**: genera su cliente desde ese mismo schema y lo usa en los Server Components.
 - Toda **escritura** pasa por Express: los Route Handlers de Next la reenvían y devuelven la respuesta de Express tal cual, así que las reglas de validación y los códigos de error existen en un solo lugar.
 
-La consecuencia práctica: agregar un campo es un recorrido fijo (schema → migración → SQL de Express → validación → interfaz) y nunca hay que sincronizar dos modelos.
+La consecuencia práctica: agregar un campo es un recorrido fijo (schema → migración → SQL de Express → validación → interfaz) y nunca hay que sincronizar dos modelos ([`docs/adding-a-field.md`](docs/adding-a-field.md)). La decisión completa, con las opciones descartadas, está en [`docs/adr/0001-data-ownership.md`](docs/adr/0001-data-ownership.md).
 
 ### API
 
