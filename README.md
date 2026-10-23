@@ -32,6 +32,7 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 | Ruta | Contenido |
 |---|---|
 | `backend/` | API y dueño del esquema. Por ahora: `prisma/schema.prisma`, `prisma/migrations/` y `prisma.config.ts`. |
+| `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
 | `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. |
 | `docker-compose.yml` | Servicios de Docker. Por ahora, solo `db` (PostgreSQL con volumen persistente y healthcheck). |
 | `.env.example` | Plantilla de todas las variables de entorno (ver más abajo). |
@@ -87,7 +88,7 @@ docker compose up -d db
 cd backend && npm ci && npm run db:deploy
 ```
 
-El detalle de columnas, la justificación del índice con `EXPLAIN ANALYZE` y cómo crear nuevas migraciones están en [`docs/database.md`](docs/database.md).
+El detalle de columnas, la justificación del índice con `EXPLAIN ANALYZE` y cómo crear nuevas migraciones y cómo correr `db/queries.sql` están en [`docs/database.md`](docs/database.md).
 
 ## Despliegue en Ubuntu desde cero
 

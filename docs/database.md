@@ -74,6 +74,34 @@ Todas las órdenes se corren desde `backend/`, con la base levantada (`docker co
 
 Nunca se edita una migración que ya está en `main`, ni se cambian las tablas a mano: cualquier corrección va en una migración nueva.
 
+## Consultas SQL a mano (`db/queries.sql`)
+
+Dos consultas escritas sin ORM, para revisar los datos desde `psql`:
+
+1. **Tareas de un estado**, de la más reciente a la más antigua. Usa el índice compuesto.
+2. **Cantidad de tareas por estado.** Parte de los dos valores posibles (`false`, `true`) con un `LEFT JOIN`, así un estado sin tareas aparece con `0` en lugar de desaparecer del resultado.
+
+El estado se elige con la variable `completed` de psql; si no se indica, se muestran las pendientes:
+
+```bash
+docker compose exec -T db psql -U todo -d todo < db/queries.sql                    # pendientes
+docker compose exec -T db psql -U todo -d todo -v completed=true < db/queries.sql  # completadas
+```
+
+Salida con tres tareas de prueba (dos pendientes y una completada):
+
+```
+ title        | completed | created_at
+--------------+-----------+------------------------------
+ Set up CI    | f         | 2026-10-23 18:23:26.91946+00
+ Write README | f         | 2026-10-23 17:23:26.91946+00
+
+ completed | total
+-----------+-------
+ f         |     2
+ t         |     1
+```
+
 ## Consola SQL
 
 ```bash
