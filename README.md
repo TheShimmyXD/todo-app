@@ -32,8 +32,9 @@ Las versiones están fijadas sin rangos (`^`) para que todo el equipo instale ex
 | Ruta | Contenido |
 |---|---|
 | `backend/` | API REST con Express (`src/`), sus pruebas (`tests/`) y dueño del esquema (`prisma/schema.prisma`, `prisma/migrations/`, `prisma.config.ts`). |
+| `frontend/` | Interfaz web con Next.js: páginas (`app/`), componentes (`components/`), lectura con Prisma (`lib/`). El cliente de Prisma se genera en `generated/` desde el schema del backend. |
 | `db/queries.sql` | Consultas SQL escritas a mano: tareas por estado y conteo por estado. |
-| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. |
+| `docs/` | Documentación para el equipo. `database.md`: tabla, índice, migraciones. `api.md`: endpoints, errores, cómo agregar un endpoint. `frontend.md`: estructura de Next, Server y Client Components, cómo agregar un filtro. |
 | `docker-compose.yml` | Servicios de Docker. Por ahora, solo `db` (PostgreSQL con volumen persistente y healthcheck). |
 | `.env.example` | Plantilla de todas las variables de entorno (ver más abajo). |
 | `.editorconfig` | Codificación, finales de línea e indentación comunes para cualquier editor. |
@@ -86,6 +87,17 @@ npm test                        # pruebas contra la base todo_test
 ```
 
 Endpoints, reglas de validación, formato de errores y cómo agregar un endpoint: [`docs/api.md`](docs/api.md).
+
+### Interfaz web (Next.js)
+
+```bash
+cd frontend
+npm ci                          # solo la primera vez
+npm run dev                     # http://localhost:3000 (con la base levantada)
+npm run build && npm start      # versión de producción
+```
+
+Estructura, qué es Server y qué es Client, y cómo agregar un filtro: [`docs/frontend.md`](docs/frontend.md).
 
 ## Decisiones técnicas tomadas
 

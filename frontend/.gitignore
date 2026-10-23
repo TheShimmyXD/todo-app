@@ -1,0 +1,9 @@
+# Frontend-only ignores (the repository root .gitignore covers node_modules,
+# .next, .env and logs).
+
+# Prisma client, regenerated from backend/prisma/schema.prisma by `npm run prisma:generate`
+/generated/
+
+# Next.js
+/out/
+next-env.d.ts

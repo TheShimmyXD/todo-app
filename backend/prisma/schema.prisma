@@ -6,6 +6,15 @@ datasource db {
   provider = "postgresql"
 }
 
+// Only the Next.js frontend uses the generated client, and only to read
+// (Express owns every write). It is generated from this same schema into the
+// frontend package by `npm run prisma:generate` inside `frontend/`; the path is
+// relative to this file. The backend never imports it.
+generator client {
+  provider = "prisma-client"
+  output   = "../../frontend/generated/prisma"
+}
+
 model Task {
   // Defaults live in the database, not in the Prisma client: the API inserts
   // rows with plain SQL and relies on PostgreSQL to fill `id` and `created_at`.
