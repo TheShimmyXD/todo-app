@@ -70,6 +70,8 @@ docker compose ps -a            # db y backend (healthy), frontend Up, migrate E
 
 En Windows, el mismo bloque va en PowerShell con una orden por línea ([`docs/windows.md`](docs/windows.md#pruebas-y-comprobaciones-antes-de-un-pr)).
 
+La integración continua ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) repite este bloque en GitHub Actions en cada push a `main` y en cada PR: un job para el backend, con un PostgreSQL de servicio, y otro para el frontend. Un PR con la CI en rojo no se fusiona; el log de cada paso está en la pestaña *Actions*. Correr el bloque en local antes de abrir el PR ahorra la espera.
+
 El frontend no tiene pruebas automáticas: cualquier cambio de interfaz se prueba en el navegador (crear, completar, filtrar y eliminar) y el PR dice qué se probó.
 
 ## Qué revisar en un PR
@@ -102,7 +104,8 @@ Cada cambio deja su documentación en el mismo PR:
 | Un componente, una página o un filtro | [`docs/frontend.md`](docs/frontend.md) |
 | Docker, servicios o variables | [`docs/docker.md`](docs/docker.md), `.env.example` y la tabla de variables del README |
 | Una orden de instalación o de desarrollo | El README y su equivalente en PowerShell en [`docs/windows.md`](docs/windows.md) |
-| Una dependencia o su versión | La tabla «Tecnologías utilizadas» del README |
+| Una dependencia o su versión | La tabla «Tecnologías utilizadas» del README; si es Node o PostgreSQL, también `NODE_VERSION` o la imagen del servicio en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
+| Un script de `package.json` que deba pasar antes de fusionar | El bloque «Antes de abrir un PR» y su paso en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |
 | Dónde se resuelve un requisito del enunciado o cómo se comprueba | [`docs/requirements.md`](docs/requirements.md) |
 | Algo que contradice una decisión registrada | Un ADR nuevo (ver abajo) |
 
